@@ -1,35 +1,26 @@
-/Applications/CLion.app/Contents/bin/cmake/mac/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/Applications/CLion.app/Contents/bin/ninja/mac/ninja -G Ninja -S /Users/amerilain/pico/Ex_1_Dimmer -B /Users/amerilain/pico/Ex_1_Dimmer/cmake-build-debug
-Using PICO_SDK_PATH from environment ('/Users/amerilain/pico/pico-sdk')
-PICO_SDK_PATH is /Users/amerilain/pico/pico-sdk
-Defaulting PICO_PLATFORM to rp2040 since not specified.
-Defaulting PICO platform compiler to pico_arm_gcc since not specified.
-PICO compiler is pico_arm_gcc
--- The C compiler identification is GNU 12.3.1
--- The CXX compiler identification is GNU 12.3.1
--- The ASM compiler identification is GNU
--- Found assembler: /opt/homebrew/bin/arm-none-eabi-gcc
+/Applications/CLion.app/Contents/bin/cmake/mac/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/Applications/CLion.app/Contents/bin/ninja/mac/ninja -G Ninja -S /Users/amerilain/pico/Embedded_Systems_Programming/Ex_1_Dimmer -B /Users/amerilain/pico/Embedded_Systems_Programming/Ex_1_Dimmer/cmake-build-debug
+CMake Error at CMakeLists.txt:5 (include):
+  include could not find requested file:
+
+    /Users/amerilain/pico/Embedded_Systems_Programming/pico-sdk/external/pico_sdk_import.cmake
+
+
+-- The C compiler identification is AppleClang 14.0.3.14030022
+-- The CXX compiler identification is AppleClang 14.0.3.14030022
+-- The ASM compiler identification is Clang with GNU-like command-line
+-- Found assembler: /Library/Developer/CommandLineTools/usr/bin/cc
 -- Detecting C compiler ABI info
 -- Detecting C compiler ABI info - done
--- Check for working C compiler: /opt/homebrew/bin/arm-none-eabi-gcc - skipped
+-- Check for working C compiler: /Library/Developer/CommandLineTools/usr/bin/cc - skipped
 -- Detecting C compile features
 -- Detecting C compile features - done
 -- Detecting CXX compiler ABI info
 -- Detecting CXX compiler ABI info - done
--- Check for working CXX compiler: /opt/homebrew/bin/arm-none-eabi-g++ - skipped
+-- Check for working CXX compiler: /Library/Developer/CommandLineTools/usr/bin/c++ - skipped
 -- Detecting CXX compile features
 -- Detecting CXX compile features - done
-Build type is Debug
-Using regular optimized debug build (set PICO_DEOPTIMIZED_DEBUG=1 to de-optimize)
-Defaulting PICO target board to pico since not specified.
-Using board configuration from /Users/amerilain/pico/pico-sdk/src/boards/include/boards/pico.h
--- Found Python3: /usr/local/bin/python3.10 (found version "3.10.6") found components: Interpreter 
-TinyUSB available at /Users/amerilain/pico/pico-sdk/lib/tinyusb/src/portable/raspberrypi/rp2040; enabling build support for USB.
-Compiling TinyUSB with CFG_TUSB_DEBUG=1
-BTstack available at /Users/amerilain/pico/pico-sdk/lib/btstack
-cyw43-driver available at /Users/amerilain/pico/pico-sdk/lib/cyw43-driver
-Pico W Bluetooth build support available.
-lwIP available at /Users/amerilain/pico/pico-sdk/lib/lwip
-mbedtls available at /Users/amerilain/pico/pico-sdk/lib/mbedtls
--- Configuring done (1.2s)
--- Generating done (0.0s)
--- Build files have been written to: /Users/amerilain/pico/Ex_1_Dimmer/cmake-build-debug
+CMake Error at CMakeLists.txt:13 (pico_sdk_init):
+  Unknown CMake command "pico_sdk_init".
+
+
+-- Configuring incomplete, errors occurred!

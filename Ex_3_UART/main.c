@@ -105,6 +105,14 @@ void read_and_process_deveui() {
 }
 
 
+typedef enum {
+    WAIT_FOR_BUTTON_PRESS,
+    ESTABLISH_CONNECTION,
+    READ_FIRMWARE_VERSION,
+    READ_DEVEUI,
+    IDLE
+} system_state_t;
+
 int main() {
     stdio_init_all();
     gpio_init(SW_0);
@@ -114,40 +122,55 @@ int main() {
     // Initialize UART with ring buffer
     uart_init_with_ring_buffer(UART_NR, UART_TX_PIN, UART_RX_PIN, BAUD_RATE);
 
+    system_state_t state = WAIT_FOR_BUTTON_PRESS;
+    bool connected = false;
+    char response[50];
+
     while (1) {
-        // Wait for SW_0 press
-        while (gpio_get(SW_0)) {
-            sleep_ms(10); // Debounce delay
+        switch (state) {
+            case WAIT_FOR_BUTTON_PRESS:
+                if (!gpio_get(SW_0)) { // Button press detected
+                    state = ESTABLISH_CONNECTION;
+                    connected = false;
+                }
+                break;
+
+            case ESTABLISH_CONNECTION:
+                for (int i = 0; i < 5 && !connected; i++) {
+                    uart_puts(UART_NR, "AT\r\n");
+                    sleep_ms(500); // Wait for response
+
+                    int len = uart_read_timeout_from_ring_buffer(UART_NR, (uint8_t *)response, sizeof(response), 500);
+                    response[len] = '\0'; // Null-terminate the string
+
+                    if (strstr(response, "+AT: OK") != NULL) {
+                        printf("Connected to LoRa module\n");
+                        connected = true;
+                        state = READ_FIRMWARE_VERSION;
+                    }
+                }
+                if (!connected) {
+                    printf("Module not responding\n");
+                    state = WAIT_FOR_BUTTON_PRESS; // Reset to initial state
+                }
+                break;
+
+            case READ_FIRMWARE_VERSION:
+                read_firmware_version();
+                state = READ_DEVEUI;
+                break;
+
+            case READ_DEVEUI:
+                read_and_process_deveui();
+                state = IDLE;
+                break;
+
+            case IDLE:
+                // Implement an idle behavior or just wait for the next button press
+                sleep_ms(1000); // Example idle delay
+                state = WAIT_FOR_BUTTON_PRESS;
+                break;
         }
-
-        // Establish communication
-        char at_command[] = "AT\r\n";
-        char response[20];
-        bool connected = false;
-
-        for (int i = 0; i < 5 && !connected; i++) {
-            uart_puts(UART_NR, at_command);
-            sleep_ms(500);
-
-            int len = uart_read_timeout_from_ring_buffer(UART_NR, (uint8_t *)response, sizeof(response), 500);
-            response[len] = '\0'; // Null-terminate the string
-
-            if (strstr(response, "+AT: OK") != NULL) {
-                printf("Connected to LoRa module\n");
-                connected = true;
-            }
-        }
-
-        if (!connected) {
-            printf("Module not responding\n");
-            continue; // Go back to the beginning of the loop
-        }
-
-        // Read firmware version
-        read_firmware_version();
-
-        // Read and process DevEui
-        read_and_process_deveui();
     }
 
     return 0;

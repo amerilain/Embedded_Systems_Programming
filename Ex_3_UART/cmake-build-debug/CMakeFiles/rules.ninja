@@ -81,7 +81,7 @@ rule ASM_EXECUTABLE_LINKER__bs2_default_Debug
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = /Applications/CLion.app/Contents/bin/cmake/mac/bin/cmake --regenerate-during-build -S/Users/amerilain/pico/Ex_3_UART -B/Users/amerilain/pico/Ex_3_UART/cmake-build-debug
+  command = /Applications/CLion.app/Contents/bin/cmake/mac/bin/cmake --regenerate-during-build -S/Users/amerilain/pico/Embedded_Systems_Programming/Ex_3_UART -B/Users/amerilain/pico/Embedded_Systems_Programming/Ex_3_UART/cmake-build-debug
   description = Re-running CMake...
   generator = 1
 
