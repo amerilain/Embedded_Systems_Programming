@@ -1,0 +1,3 @@
+/Users/amerilain/pico/Embedded_Systems_Programming/EX_4_EEPROM/cmake-build-debug/pioasm/CMakeFiles/pioasm.dir
+/Users/amerilain/pico/Embedded_Systems_Programming/EX_4_EEPROM/cmake-build-debug/pioasm/CMakeFiles/edit_cache.dir
+/Users/amerilain/pico/Embedded_Systems_Programming/EX_4_EEPROM/cmake-build-debug/pioasm/CMakeFiles/rebuild_cache.dir

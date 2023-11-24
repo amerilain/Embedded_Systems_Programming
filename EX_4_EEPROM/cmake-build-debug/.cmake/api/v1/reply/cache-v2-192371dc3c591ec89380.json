@@ -1511,7 +1511,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : " /Users/amerilain/pico/pico-sdk/src/rp2_common/cmsis /Users/amerilain/pico/pico-sdk/src/rp2040/hardware_regs /Users/amerilain/pico/pico-sdk/src/rp2_common/cmsis /Users/amerilain/pico/pico-sdk/src/rp2040/hardware_regs /Users/amerilain/pico/pico-sdk/src/rp2_common/cmsis /Users/amerilain/pico/pico-sdk/src/rp2040/hardware_regs"
+			"value" : " /Users/amerilain/pico/pico-sdk/src/rp2_common/cmsis /Users/amerilain/pico/pico-sdk/src/rp2040/hardware_regs"
 		},
 		{
 			"name" : "PICO_DOXYGEN_PATHS",
@@ -1764,18 +1764,6 @@
 			],
 			"type" : "INTERNAL",
 			"value" : "98c9afe7104b3e9bb72cf16541317268"
-		},
-		{
-			"name" : "_Python3_Interpreter_REASON_FAILURE",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : "Interpreter reason failure"
-				}
-			],
-			"type" : "INTERNAL",
-			"value" : ""
 		},
 		{
 			"name" : "_Python3_NumPy_REASON_FAILURE",

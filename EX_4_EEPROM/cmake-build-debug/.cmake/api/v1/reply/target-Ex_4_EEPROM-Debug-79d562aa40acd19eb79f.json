@@ -497,6 +497,10 @@
 				{
 					"backtrace" : 2,
 					"path" : "/Users/amerilain/pico/pico-sdk/src/rp2_common/hardware_i2c/include"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/Users/amerilain/pico/pico-sdk/src/rp2_common/hardware_pwm/include"
 				}
 			],
 			"language" : "C",
@@ -957,6 +961,10 @@
 				{
 					"backtrace" : 2,
 					"path" : "/Users/amerilain/pico/pico-sdk/src/rp2_common/hardware_i2c/include"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/Users/amerilain/pico/pico-sdk/src/rp2_common/hardware_pwm/include"
 				}
 			],
 			"language" : "ASM",
@@ -1378,6 +1386,10 @@
 				{
 					"backtrace" : 2,
 					"path" : "/Users/amerilain/pico/pico-sdk/src/rp2_common/hardware_i2c/include"
+				},
+				{
+					"backtrace" : 2,
+					"path" : "/Users/amerilain/pico/pico-sdk/src/rp2_common/hardware_pwm/include"
 				}
 			],
 			"language" : "CXX",
