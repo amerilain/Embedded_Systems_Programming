@@ -3,65 +3,59 @@
 #include "hardware/pwm.h"
 #include <stdio.h>
 
-// EEPROM and I2C configuration
 #define I2C_PORT i2c0
 #define EEPROM_ADDRESS 0x50
 #define SDA_PIN 16
 #define SCL_PIN 17
 #define EEPROM_HIGHEST_ADDRESS 0x7FFE  // One less than the max to fit the 2-byte structure
 
-
 #define BUTTON_SW0 9
 #define BUTTON_SW1 8
 #define BUTTON_SW2 7
-
 #define LED_D1 22
 #define LED_D2 21
 #define LED_D3 20
 
-// Function Prototypes
+typedef struct {
+    uint8_t state;
+    uint8_t not_state; // Inverted state for validation
+} ledstate_t;
+
 void init_i2c();
 void init_buttons();
 void init_leds();
 void set_leds(uint8_t state);
+bool led_state_is_valid(ledstate_t *ls);
+void setup_pwm_for_led(uint gpio);
 bool write_byte(uint16_t memory_address, uint8_t data);
 bool read_byte(uint16_t memory_address, uint8_t *data);
 bool write_bytes(uint16_t start_memory_address, const uint8_t *data, size_t length);
 bool read_bytes(uint16_t start_memory_address, uint8_t *data, size_t length);
 
-// Main function
 int main() {
     stdio_init_all();
-    init_i2c(); // Initialize I2C for EEPROM
-    init_buttons(); // Initialize buttons
-    init_leds(); // Initialize LEDs
+    init_i2c();
+    init_buttons();
+    init_leds();
 
     // Define a structure for LED state and validation
-    typedef struct {
-        uint8_t state;
-        uint8_t not_state; // Inverted state for validation
-    } ledstate_t;
-
-    // Function to validate LED state
-    bool led_state_is_valid(ledstate_t *ls) {
-        return ls->state == (uint8_t)~ls->not_state;
-    }
+    ledstate_t led_state;
 
     // Load and validate LED state from EEPROM
-    ledstate_t led_state;
     if (read_bytes(EEPROM_HIGHEST_ADDRESS, (uint8_t *)&led_state, sizeof(ledstate_t)) &&
         led_state_is_valid(&led_state)) {
         set_leds(led_state.state); // Set LEDs based on stored state
     } else {
-        led_state.state = 0b010; // Default state: middle LED on
+        // Default state: middle LED on, others off
+        led_state.state = 0b010;
         led_state.not_state = ~led_state.state;
+        set_leds(led_state.state);
     }
 
     absolute_time_t start_time = get_absolute_time();
-
     bool last_button_states[3] = {true, true, true}; // Store the last states of buttons
+    bool state_changed = false; // Track if button state has changed
 
-    // Main loop
     while (true) {
         bool current_button_states[3] = {
                 gpio_get(BUTTON_SW0),
@@ -69,38 +63,36 @@ int main() {
                 gpio_get(BUTTON_SW2)
         };
 
+        state_changed = false;
+
         // Check each button and control corresponding LED
-        if (!current_button_states[0] && last_button_states[0]) {
-            // Toggle LED D3 for SW_0
-            led_state.state ^= 0b100;
-        }
-        if (!current_button_states[1] && last_button_states[1]) {
-            // Toggle LED D2 for SW_1
-            led_state.state ^= 0b010;
-        }
-        if (!current_button_states[2] && last_button_states[2]) {
-            // Toggle LED D1 for SW_2
-            led_state.state ^= 0b001;
+        for (int i = 0; i < 3; i++) {
+            if (!current_button_states[i] && last_button_states[i]) {
+                led_state.state ^= (1 << (2 - i)); // Toggle corresponding LED
+                state_changed = true;
+            }
         }
 
-        // Update the LEDs only if a button state changed
-        if (current_button_states[0] != last_button_states[0] ||
-            current_button_states[1] != last_button_states[1] ||
-            current_button_states[2] != last_button_states[2]) {
-
+        // Update the LEDs and EEPROM only if a button state changed
+        if (state_changed) {
             set_leds(led_state.state);
             led_state.not_state = ~led_state.state;
             write_bytes(EEPROM_HIGHEST_ADDRESS, (uint8_t *)&led_state, sizeof(ledstate_t));
 
+            // Calculate and print elapsed time and LED states
             int64_t elapsed_time = absolute_time_diff_us(start_time, get_absolute_time()) / 1000000;
-            printf("Time: %lld seconds, LED state: 0x%x\n", elapsed_time, led_state.state);
-
-            // Update the last button states
-            for (int i = 0; i < 3; i++) {
-                last_button_states[i] = current_button_states[i];
-            }
+            printf("Elapsed Time: %lld s, LEDs: SW_0 %s, SW_1 %s, SW_2 %s\n",
+                   elapsed_time,
+                   (led_state.state & 0b100) ? "On" : "Off",
+                   (led_state.state & 0b010) ? "On" : "Off",
+                   (led_state.state & 0b001) ? "On" : "Off");
 
             sleep_ms(200); // Debounce delay
+        }
+
+        // Update the last button states
+        for (int i = 0; i < 3; i++) {
+            last_button_states[i] = current_button_states[i];
         }
 
         sleep_ms(10); // Main loop delay
@@ -110,8 +102,6 @@ int main() {
 }
 
 
-
-// Initialize I2C
 void init_i2c() {
     i2c_init(I2C_PORT, 100 * 1000);  // Initialize I2C at 100 kHz
     gpio_set_function(SDA_PIN, GPIO_FUNC_I2C);
@@ -134,17 +124,6 @@ void init_buttons() {
 }
 
 void init_leds() {
-    // Function to setup PWM for a single LED
-    void setup_pwm_for_led(uint gpio) {
-        uint slice_num = pwm_gpio_to_slice_num(gpio);
-        pwm_config config = pwm_get_default_config();
-        pwm_config_set_clkdiv(&config, 125.0); // Set PWM clock divider for 1 MHz base frequency
-        pwm_config_set_wrap(&config, 999);     // Set wrap value for 1 kHz PWM frequency
-        pwm_init(slice_num, &config, true);    // Initialize PWM with this configuration
-        pwm_set_chan_level(slice_num, pwm_gpio_to_channel(gpio), 0);  // Initially off
-    }
-
-    // Set GPIO function for LEDs and initialize PWM
     gpio_set_function(LED_D1, GPIO_FUNC_PWM);
     setup_pwm_for_led(LED_D1);
 
@@ -154,7 +133,6 @@ void init_leds() {
     gpio_set_function(LED_D3, GPIO_FUNC_PWM);
     setup_pwm_for_led(LED_D3);
 }
-
 
 void set_leds(uint8_t state) {
     uint level_d1 = (state & 0b001) ? 500 : 0; // Check state of LED D1
@@ -166,6 +144,18 @@ void set_leds(uint8_t state) {
     pwm_set_chan_level(pwm_gpio_to_slice_num(LED_D3), pwm_gpio_to_channel(LED_D3), level_d3);
 }
 
+bool led_state_is_valid(ledstate_t *ls) {
+    return ls->state == (uint8_t)~ls->not_state;
+}
+
+void setup_pwm_for_led(uint gpio) {
+    uint slice_num = pwm_gpio_to_slice_num(gpio);
+    pwm_config config = pwm_get_default_config();
+    pwm_config_set_clkdiv(&config, 125.0); // Set PWM clock divider for 1 MHz base frequency
+    pwm_config_set_wrap(&config, 999);     // Set wrap value for 1 kHz PWM frequency
+    pwm_init(slice_num, &config, true);    // Initialize PWM with this configuration
+    pwm_set_chan_level(slice_num, pwm_gpio_to_channel(gpio), 0);  // Initially off
+}
 
 bool write_byte(uint16_t memory_address, uint8_t data) {
     uint8_t buffer[3];
@@ -173,13 +163,10 @@ bool write_byte(uint16_t memory_address, uint8_t data) {
     buffer[1] = memory_address & 0xFF;        // Memory address low byte
     buffer[2] = data;                         // Data byte
 
-    printf("Writing 0x%x to EEPROM at address 0x%x\n", data, memory_address);
     int result = i2c_write_blocking(I2C_PORT, EEPROM_ADDRESS, buffer, 3, false);
     if (result != 3) {
-        printf("Write failed, result: %d\n", result);
         return false;
     }
-    printf("Write successful\n");
     sleep_ms(5);  // EEPROM write cycle time
     return true;
 }
@@ -190,18 +177,12 @@ bool read_byte(uint16_t memory_address, uint8_t *data) {
     address_buffer[0] = (memory_address >> 8) & 0xFF; // Memory address high byte
     address_buffer[1] = memory_address & 0xFF;        // Memory address low byte
 
-    printf("Setting EEPROM read address to 0x%x\n", memory_address);
     if (i2c_write_blocking(I2C_PORT, EEPROM_ADDRESS, address_buffer, 2, true) != 2) {
-        printf("Failed to set read address\n");
         return false;
     }
-
-    printf("Reading from EEPROM\n");
     if (i2c_read_blocking(I2C_PORT, EEPROM_ADDRESS, data, 1, false) != 1) {
-        printf("Read failed\n");
         return false;
     }
-    printf("Read successful, data: 0x%x\n", *data);
     return true;
 }
 
@@ -210,11 +191,9 @@ bool write_bytes(uint16_t start_memory_address, const uint8_t *data, size_t leng
     for (size_t i = 0; i < length; i++) {
         uint16_t memory_address = start_memory_address + i;
         if (!write_byte(memory_address, data[i])) {
-            printf("Multi-byte write failed at address 0x%x\n", memory_address);
             return false;
         }
     }
-    printf("Multi-byte write successful\n");
     return true;
 }
 
@@ -223,10 +202,8 @@ bool read_bytes(uint16_t start_memory_address, uint8_t *data, size_t length) {
     for (size_t i = 0; i < length; i++) {
         uint16_t memory_address = start_memory_address + i;
         if (!read_byte(memory_address, &data[i])) {
-            printf("Multi-byte read failed at address 0x%x\n", memory_address);
             return false;
         }
     }
-    printf("Multi-byte read successful\n");
     return true;
 }
