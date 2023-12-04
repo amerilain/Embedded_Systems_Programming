@@ -39,12 +39,12 @@ int main() {
     stdio_init_all();
     init_i2c();
 
-    /*
+/*
     if (!clear_eeprom()) {
         printf("Failed to clear EEPROM.\n");
-        return 1; // Exit if failed to clear
+        return 1;
     }
-    */
+*/
 
     init_buttons();
     init_leds();
@@ -111,6 +111,15 @@ void init_buttons() {
     gpio_pull_up(BUTTON_SW2);
 }
 
+void setup_pwm_for_led(uint gpio) {
+    uint slice_num = pwm_gpio_to_slice_num(gpio);
+    pwm_config config = pwm_get_default_config();
+    pwm_config_set_clkdiv(&config, 125.0); // Set PWM clock divider for 1 MHz base frequency
+    pwm_config_set_wrap(&config, 999);     // Set wrap value for 1 kHz PWM frequency
+    pwm_init(slice_num, &config, true);    // Initialize PWM with this configuration
+    pwm_set_chan_level(slice_num, pwm_gpio_to_channel(gpio), 0);  // Initially off
+}
+
 void init_leds() {
     gpio_set_function(LED_D1, GPIO_FUNC_PWM);
     setup_pwm_for_led(LED_D1);
@@ -134,15 +143,6 @@ void set_leds(uint8_t state) {
 
 bool led_state_is_valid(const ledstate_t *ls) {
     return ls->state == (uint8_t)~ls->not_state;
-}
-
-void setup_pwm_for_led(uint gpio) {
-    uint slice_num = pwm_gpio_to_slice_num(gpio);
-    pwm_config config = pwm_get_default_config();
-    pwm_config_set_clkdiv(&config, 125.0); // Set PWM clock divider for 1 MHz base frequency
-    pwm_config_set_wrap(&config, 999);     // Set wrap value for 1 kHz PWM frequency
-    pwm_init(slice_num, &config, true);    // Initialize PWM with this configuration
-    pwm_set_chan_level(slice_num, pwm_gpio_to_channel(gpio), 0);  // Initially off
 }
 
 bool write_byte(uint16_t memory_address, uint8_t data) {
