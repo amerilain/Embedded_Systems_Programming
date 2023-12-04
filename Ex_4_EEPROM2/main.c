@@ -49,7 +49,6 @@ void write_to_log(const char *message);
 void read_log();
 void erase_log();
 void init_log();
-bool write_log_entry_to_eeprom(const char* command);
 void led_state_to_string(const ledstate_t *led_state, char *state_str);
 
 
@@ -64,8 +63,8 @@ int main() {
 
     const uint MAX_COMMAND_LENGTH = 64;
     char command_buffer[MAX_COMMAND_LENGTH];
-    uint command_length = 0; // Current length of the command buffer
-    const uint DEBOUNCE_DURATION_MS = 20; // Duration for debouncing in milliseconds
+    uint command_length = 0;
+
 
     ledstate_t led_state;
     // Try reading the state from EEPROM and validate it
@@ -110,10 +109,8 @@ int main() {
 
         for (int i = 0; i < 3; i++) {
             if (!current_button_states[i] && last_button_states[i]) {
-                // Wait for a short period to debounce
-                sleep_ms(DEBOUNCE_DURATION_MS);
+                sleep_ms(20); // Wait for a short period to debounce
                 bool button_state_after_delay = gpio_get(button_pins[i]);
-
                 if (!button_state_after_delay) {
                     // Button press is considered valid
                     led_state.state ^= (1 << (2 - i));
@@ -129,7 +126,7 @@ int main() {
 
             char led_state_str[62];
             led_state_to_string(&led_state, led_state_str);
-            write_log_entry_to_eeprom(led_state_str);
+            write_to_log(led_state_str);
 
             int64_t elapsed_time = absolute_time_diff_us(start_time, get_absolute_time()) / 1000000;
             printf("Elapsed Time: %lld s, LEDs: SW_0 %s, SW_1 %s, SW_2 %s\n",
@@ -254,27 +251,6 @@ bool read_bytes(uint16_t start_memory_address, uint8_t *data, size_t length) {
     return true;
 }
 
-
-bool write_log_entry_to_eeprom(const char* message) {
-    log_entry entry;
-    strncpy(entry.message, message, 61);  // Ensure it's null-terminated
-    entry.message[61] = '\0';
-    entry.crc = crc16((const uint8_t*)entry.message, strlen(entry.message));
-
-    uint16_t write_address = LOG_START_ADDRESS + (current_log_index * sizeof(log_entry));
-    if (write_address >= (LOG_START_ADDRESS + MAX_LOG_ENTRIES * sizeof(log_entry))) {
-        // Log is full, handle as needed (e.g., overwrite or stop logging)
-        return false; // For now, stop logging when full
-    }
-
-    uint8_t *byte_ptr = (uint8_t *)&entry;
-    bool write_success = write_bytes(write_address, byte_ptr, sizeof(log_entry));
-    if (write_success) {
-        current_log_index = (current_log_index + 1) % MAX_LOG_ENTRIES; // Increment and wrap around
-    }
-    return write_success;
-}
-
 bool read_state_from_eeprom(ledstate_t *state) {
     if (!state) return false;
     return read_bytes(EEPROM_HIGHEST_ADDRESS, (uint8_t *)state, sizeof(ledstate_t));
@@ -304,27 +280,29 @@ uint16_t crc16(const uint8_t *data_p, size_t length) {
 
 void write_to_log(const char *message) {
     log_entry entry;
-    strncpy(entry.message, message, 61); // Copy the message
-    entry.message[61] = '\0'; // Ensure null termination
-
+    strncpy(entry.message, message, 61); // Ensure null termination
+    entry.message[61] = '\0';
     entry.crc = crc16((const uint8_t *)entry.message, strlen(entry.message));
 
-    uint16_t write_address = LOG_START_ADDRESS + (current_log_index * sizeof(log_entry));
-    if (write_address >= (LOG_START_ADDRESS + MAX_LOG_ENTRIES * sizeof(log_entry))) {
-        current_log_index = 0; // Reset index if at the end
-        write_address = LOG_START_ADDRESS;
+    if (current_log_index >= MAX_LOG_ENTRIES) {
+        printf("Log is full. Erasing log and starting over.\n");
+        erase_log(); // Erase the entire log
+        current_log_index = 0; // Reset log index
     }
 
+    uint16_t write_address = LOG_START_ADDRESS + (current_log_index * sizeof(log_entry));
+
     uint8_t *byte_ptr = (uint8_t *)&entry;
+
     bool success = write_bytes(write_address, byte_ptr, sizeof(log_entry));
     if (success) {
         printf("Log written: '%s' at address %u\n", entry.message, write_address);
     } else {
         printf("Failed to write log at address %u\n", write_address);
     }
-    current_log_index++; // Increment the log index
-}
 
+    current_log_index++; // Increment the log index after successful write
+}
 
 void read_log() {
     for (int i = 0; i < MAX_LOG_ENTRIES; i++) {
@@ -364,8 +342,23 @@ void erase_log() {
 
 
 void init_log() {
+    // Read EEPROM from the start to find the next available address
+    log_entry entry;
+    for (int i = 0; i < MAX_LOG_ENTRIES; i++) {
+        uint16_t read_address = LOG_START_ADDRESS + (i * sizeof(log_entry));
+        read_bytes(read_address, (uint8_t *)&entry, sizeof(log_entry));
+
+        // Check if this entry is invalid (first byte is 0 or CRC check fails)
+        if (entry.message[0] == 0 || crc16((const uint8_t *)entry.message, strlen(entry.message)) != entry.crc) {
+            current_log_index = i;
+            break;
+        }
+    }
+
+    // Write the "Boot" log
     write_to_log("Boot");
 }
+
 
 void led_state_to_string(const ledstate_t *led_state, char *state_str) {
     snprintf(state_str, 62, "LEDs: SW_0 %s, SW_1 %s, SW_2 %s",
@@ -373,8 +366,3 @@ void led_state_to_string(const ledstate_t *led_state, char *state_str) {
              (led_state->state & 0b010) ? "On" : "Off",
              (led_state->state & 0b001) ? "On" : "Off");
 }
-
-
-
-
-
