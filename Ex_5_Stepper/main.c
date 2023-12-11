@@ -4,6 +4,8 @@
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 
+static int toStart = 0;
+
 #define IN1 2
 #define IN2 3
 #define IN3 6
